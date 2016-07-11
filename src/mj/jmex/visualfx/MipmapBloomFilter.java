@@ -33,43 +33,7 @@ import java.util.ArrayList;
    public class MipmapBloomFilter extends Filter
 // *****************************************************************************
 {
-
-   /**
-    * GlowMode specifies if the glow will be applied to the whole scene, or to
-    * objects that have aglow color or a glow map.
-    */
-   public enum GlowMode
-   {  /**
-       * Apply bloom filter to bright areas in the scene. (Default)
-       */
-      Scene,
-      /**
-       * Apply bloom only to objects that have a glow map or a glow color.
-       */
-      Objects,
-      /**
-       * Apply bloom to both bright parts of the scene and objects with glow map.
-       */
-      SceneAndObjects;
-   }
-   
-   /**
-    * The Quality can be adjusted to achieve better results at lower
-    * performance.
-    */
-   public enum Quality
-   {
-      /**
-       * Uses an additional gaussian blur to smooth each mipmap level. (Default)
-       */
-      High,
       
-      /**
-       * Lower quality but better performance mode.
-       */
-      Low;
-   }
-
    private Quality quality=Quality.High;
    private GlowMode glowMode=GlowMode.Scene;
    private float exposurePower=3.0f;
@@ -88,6 +52,49 @@ import java.util.ArrayList;
    private int initialWidth;
    private int initialHeight;
    private final int numPasses=8;
+   private Format texFormat=Format.RGB111110F;
+
+/**
+ * GlowMode specifies if the glow will be applied to the whole scene, or to
+ * objects that have aglow color or a glow map.
+ */
+// =============================================================================
+   public enum GlowMode
+// =============================================================================
+{  /**
+    * Apply bloom filter to bright areas in the scene. (Default)
+    */
+   Scene,
+   /**
+    * Apply bloom only to objects that have a glow map or a glow color.
+    */
+   Objects,
+   /**
+    * Apply bloom to both bright parts of the scene and objects with glow map.
+    */
+   SceneAndObjects;
+} // GlowMode ==================================================================
+   
+   
+   
+/**
+ * The Quality can be adjusted to achieve better results at lower
+ * performance.
+ */
+// =============================================================================
+   public enum Quality
+// =============================================================================
+{
+   /**
+    * Uses an additional gaussian blur to smooth each mipmap level. (Default)
+    */
+   High,
+
+   /**
+    * Lower quality but better performance mode.
+    */
+   Low;
+} // ===========================================================================
 
     
 /**
@@ -156,17 +163,20 @@ import java.util.ArrayList;
    this.initialWidth=w;
    this.initialHeight=h;
 
+// Configure the preGlowPass, for use with GlowMode.SceneAndObjects and
+// GlowMode.Objects.
+// -----------------------------------------------------------------------------
    screenWidth=(int)Math.max(1.0, (w/downSamplingCoef));
    screenHeight=(int)Math.max(1.0, (h/downSamplingCoef));
    if (glowMode!=GlowMode.Scene)
    {  preGlowPass=new Pass();
       preGlowPass.init(renderManager.getRenderer(), screenWidth, screenHeight,
-       Format.RGB111110F, Format.Depth);
+       texFormat, Format.Depth);
    }
 
    postRenderPasses=new ArrayList<Pass>();
    
-// Configure extract pass.
+// Configure extractPass, extracting bright pixels from the scene.
 // -----------------------------------------------------------------------------   
    extractMat=new Material(manager, "Common/MatDefs/Post/BloomExtract.j3md");
    extractPass=new Pass()
@@ -186,7 +196,8 @@ import java.util.ArrayList;
    };
 
    extractPass.init(renderManager.getRenderer(), initialWidth, initialHeight, 
-    Format.RGB111110F, Format.Depth, 1, extractMat);
+    texFormat, Format.Depth, 1, extractMat);
+
    extractPass.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);
    extractPass.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
    postRenderPasses.add(extractPass);
@@ -224,7 +235,7 @@ import java.util.ArrayList;
       };
 
       mmPasses[jj].init(renderManager.getRenderer(), passWidth, 
-       passHeight, Format.RGB111110F, Format.Depth, 1, passMat);
+       passHeight, texFormat, Format.Depth, 1, passMat);
       mmPasses[jj].getRenderedTexture().setMagFilter(
        Texture.MagFilter.Bilinear);
       mmPasses[jj].getRenderedTexture().setMinFilter(
@@ -275,7 +286,7 @@ import java.util.ArrayList;
       }
    };
    hBlur.init(renderManager.getRenderer(), screenWidth, screenHeight,
-    Format.RGB111110F, Format.Depth, 1, hBlurMat);
+    texFormat, Format.Depth, 1, hBlurMat);
    hBlur.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);
    hBlur.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
    postRenderPasses.add(hBlur);
@@ -293,7 +304,7 @@ import java.util.ArrayList;
       }
    };
    vBlur.init(renderManager.getRenderer(), screenWidth, screenHeight,
-    Format.RGB111110F, Format.Depth, 1, vBlurMat);
+    texFormat, Format.Depth, 1, vBlurMat);
    vBlur.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);        
    vBlur.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
    postRenderPasses.add(vBlur);
@@ -446,7 +457,36 @@ import java.util.ArrayList;
 {  this.exposurePower=exposurePower;
 } // setExposurePower ==========================================================
 
+   
 
+/**
+ * Sets the glow mode of the bloom filter.
+ * @param glowMode   See above.
+ */
+// =============================================================================
+   public void setGlowMode(GlowMode glowMode)
+// =============================================================================
+{  this.glowMode=glowMode;
+   if (assetManager!=null)             // Dirty initialization check.
+      reInitFilter();
+} // setHighQuality ============================================================
+
+   
+   
+/**
+ * Sets the quality of the bloom filter.
+ * @param enabled    <code>true</code> for <code>Quality.High</code>.
+ */
+// =============================================================================
+   public void setHighQuality(boolean enabled)
+// =============================================================================
+{  this.quality=enabled? Quality.High:Quality.Low;
+   if (assetManager!=null)             // Dirty initialization check.
+      reInitFilter();
+} // setHighQuality ============================================================
+   
+   
+   
 /**
  * Provides the downSampling coefficient of the mipmap levels.
  * @return  The downsampling coefficient.
