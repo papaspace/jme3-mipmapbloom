@@ -7,4 +7,4 @@ mj.jmex.visualfx.MipmapBloomFilter.java, which is an extension of jMonkeyEngine'
 
 Place the MatDefs/ folder and its contents into your Assets/ directory, just as shown in this git repo.
 
-For a more documentation visit the javadoc of the MipmapBloomFilter.java file.
+For more documentation visit the javadoc of the MipmapBloomFilter.java file.
