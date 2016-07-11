@@ -163,6 +163,8 @@ import java.util.ArrayList;
    this.initialWidth=w;
    this.initialHeight=h;
 
+   postRenderPasses=new ArrayList<Pass>();
+
 // Configure the preGlowPass, for use with GlowMode.SceneAndObjects and
 // GlowMode.Objects.
 // -----------------------------------------------------------------------------
@@ -173,8 +175,6 @@ import java.util.ArrayList;
       preGlowPass.init(renderManager.getRenderer(), screenWidth, screenHeight,
        texFormat, Format.Depth);
    }
-
-   postRenderPasses=new ArrayList<Pass>();
    
 // Configure extractPass, extracting bright pixels from the scene.
 // -----------------------------------------------------------------------------   
@@ -273,6 +273,9 @@ import java.util.ArrayList;
    private Texture2D gaussianBlur(AssetManager manager, final Texture2D texture)
 // =============================================================================
 {
+   final int w=texture.getImage().getWidth();
+   final int h=texture.getImage().getHeight();
+   
 // Configure horizontal blur pass.
 // -----------------------------------------------------------------------------   
    final Material hBlurMat=new Material(manager,
@@ -281,12 +284,12 @@ import java.util.ArrayList;
    {  @Override
       public void beforeRender()
       {  hBlurMat.setTexture("Texture", texture);
-         hBlurMat.setFloat("Size", texture.getImage().getWidth());
+         hBlurMat.setFloat("Size", w);
          hBlurMat.setFloat("Scale", 0.5f);
       }
    };
-   hBlur.init(renderManager.getRenderer(), screenWidth, screenHeight,
-    texFormat, Format.Depth, 1, hBlurMat);
+   hBlur.init(renderManager.getRenderer(), w, h, texFormat, Format.Depth, 1, 
+    hBlurMat);
    hBlur.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);
    hBlur.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
    postRenderPasses.add(hBlur);
@@ -299,12 +302,12 @@ import java.util.ArrayList;
    {  @Override
       public void beforeRender()
       {  vBlurMat.setTexture("Texture", hBlur.getRenderedTexture());
-         vBlurMat.setFloat("Size", texture.getImage().getHeight());
+         vBlurMat.setFloat("Size", h);
          vBlurMat.setFloat("Scale", 0.5f);
       }
    };
-   vBlur.init(renderManager.getRenderer(), screenWidth, screenHeight,
-    texFormat, Format.Depth, 1, vBlurMat);
+   vBlur.init(renderManager.getRenderer(), w, h, texFormat, Format.Depth, 1,
+    vBlurMat);
    vBlur.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);        
    vBlur.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
    postRenderPasses.add(vBlur);
