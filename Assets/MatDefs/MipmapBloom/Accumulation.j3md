@@ -1,4 +1,4 @@
-MaterialDef PreHdr
+MaterialDef MipmapBloom
 {
 
    MaterialParameters
@@ -26,7 +26,7 @@ MaterialDef PreHdr
 
 
 
-   Technique
+   Technique Default
    {
       VertexShader GLSL150:   Common/MatDefs/Post/Post15.vert
       FragmentShader GLSL150: MatDefs/MipmapBloom/Accumulation.frag

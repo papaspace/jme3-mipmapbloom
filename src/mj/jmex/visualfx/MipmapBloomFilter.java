@@ -13,11 +13,14 @@ import com.jme3.renderer.RenderManager;
 import com.jme3.renderer.Renderer;
 import com.jme3.renderer.ViewPort;
 import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.texture.Image;
 import com.jme3.texture.Image.Format;
 import com.jme3.texture.Texture;
 import com.jme3.texture.Texture2D;
 import java.io.IOException;
 import java.util.ArrayList;
+
+
 
 /**
  * This bloom filter uses mipmaps of the main scene to generate a large
@@ -160,47 +163,14 @@ import java.util.ArrayList;
    this.viewPort=vp;
 
    this.assetManager=manager;
-   this.initialWidth=w;
-   this.initialHeight=h;
+   this.initialWidth=w;    //640;
+   this.initialHeight=h;   //(int)(640.0f*(float)h/(float)w);
 
    postRenderPasses=new ArrayList<Pass>();
-
-// Configure the preGlowPass, for use with GlowMode.SceneAndObjects and
-// GlowMode.Objects.
-// -----------------------------------------------------------------------------
-   screenWidth=(int)Math.max(1.0, (w/downSamplingCoef));
-   screenHeight=(int)Math.max(1.0, (h/downSamplingCoef));
-   if (glowMode!=GlowMode.Scene)
-   {  preGlowPass=new Pass();
-      preGlowPass.init(renderManager.getRenderer(), screenWidth, screenHeight,
-       texFormat, Format.Depth);
-   }
    
-// Configure extractPass, extracting bright pixels from the scene.
-// -----------------------------------------------------------------------------   
-   extractMat=new Material(manager, "Common/MatDefs/Post/BloomExtract.j3md");
-   extractPass=new Pass()
-   {
-       @Override
-       public boolean requiresSceneAsTexture() {return true;}
-
-       @Override
-       public void beforeRender() {
-           extractMat.setFloat("ExposurePow", exposurePower);
-           extractMat.setFloat("ExposureCutoff", exposureCutOff);
-           if (glowMode!=GlowMode.Scene) {
-               extractMat.setTexture("GlowMap", preGlowPass.getRenderedTexture());
-           }
-           extractMat.setBoolean("Extract", glowMode!=GlowMode.Objects);
-       }
-   };
-
-   extractPass.init(renderManager.getRenderer(), initialWidth, initialHeight, 
-    texFormat, Format.Depth, 1, extractMat);
-
-   extractPass.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);
-   extractPass.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
-   postRenderPasses.add(extractPass);
+// Configure extract pass.
+// -----------------------------------------------------------------------------
+   postRenderPasses.add(makeExtractPass(manager, renderManager, w, h)); 
 
 // Configure mipmap blur passes.
 // -----------------------------------------------------------------------------
@@ -211,10 +181,10 @@ import java.util.ArrayList;
 
    for (int ii=0; ii<numPasses; ii++)
    {
-      final int passWidth=(int)(initialWidth/FastMath.pow(downSamplingCoef,
-       (ii+1)));
-      final int passHeight=(int)(initialHeight/FastMath.pow(downSamplingCoef,
-       (ii+1)));
+      final int passWidth=Math.max(1, 
+       (int)(initialWidth/FastMath.pow(downSamplingCoef, (ii+1))));
+      final int passHeight=//initialHeight;
+       Math.max(1, (int)(initialHeight/FastMath.pow(downSamplingCoef, (ii+1))));
 
       final Material passMat=new Material(manager,
        "MatDefs/MipmapBloom/MipmapSampler.j3md");
@@ -229,8 +199,12 @@ import java.util.ArrayList;
             else
                passMat.setTexture("Texture", mmPasses[jj-1]
                 .getRenderedTexture());
-            passMat.setFloat("Dx", 0.5f/(float)passWidth);
-            passMat.setFloat("Dy", 0.5f/(float)passHeight);
+            
+            if (quality==Quality.High)
+            {
+               passMat.setFloat("Dx", 0.5f/(float)passWidth);
+               passMat.setFloat("Dy", 0.5f/(float)passHeight);
+            }
          }
       };
 
@@ -244,7 +218,7 @@ import java.util.ArrayList;
 
 //    In high quality mode each mipmap will be blurred with a gaussian blur,
 //    which makes the result much smoother.
-      if (quality==Quality.High)
+      if (quality==Quality.High && jj>=3)
          mipmaps[jj]=gaussianBlur(manager, mmPasses[jj].getRenderedTexture());
       else
          mipmaps[jj]=mmPasses[jj].getRenderedTexture();
@@ -259,6 +233,73 @@ import java.util.ArrayList;
    setBloomIntensity(bloomFactor, bloomPower);
 } // initFilter ================================================================
 
+
+   
+/**
+ * Informs the FilterPostProcessor that this Filter needs the original scene as 
+ * texture.
+ * 
+ * @return  <code>true</code>
+ */
+// =============================================================================
+   @Override
+   protected boolean isRequiresSceneTexture() {return true;}
+// =============================================================================
+
+   
+   
+/**
+ * Makes the glow pass and/or extract pass.
+ * 
+ * @param manager
+ * @param renderManager
+ * @param w
+ * @param h
+ * @return 
+ */
+// =============================================================================
+   protected Pass makeExtractPass(AssetManager manager, 
+    RenderManager renderManager, int w, int h)
+// =============================================================================
+{
+// Configure the preGlowPass, for use with GlowMode.SceneAndObjects and
+// GlowMode.Objects.
+// -----------------------------------------------------------------------------
+   screenWidth=(int)Math.max(1.0, (w/downSamplingCoef));
+   screenHeight=(int)Math.max(1.0, (h/downSamplingCoef));
+   if (glowMode!=GlowMode.Scene)
+   {  preGlowPass=new Pass();
+      preGlowPass.init(renderManager.getRenderer(), screenWidth, screenHeight,
+       texFormat, Format.Depth);
+   }
+
+// Configure extractPass, extracting bright pixels from the scene.
+// -----------------------------------------------------------------------------   
+   extractMat=new Material(manager, "Common/MatDefs/Post/BloomExtract.j3md");
+   extractPass=new Pass()
+   {
+      @Override
+      public boolean requiresSceneAsTexture() {return true;}
+
+      @Override
+      public void beforeRender() {
+         extractMat.setFloat("ExposurePow", exposurePower);
+         extractMat.setFloat("ExposureCutoff", exposureCutOff);
+         if (glowMode!=GlowMode.Scene)
+            extractMat.setTexture("GlowMap", preGlowPass.getRenderedTexture());
+         extractMat.setBoolean("Extract", glowMode!=GlowMode.Objects);
+      }
+   };
+
+   extractPass.init(renderManager.getRenderer(), w, h, 
+    texFormat, Format.Depth, 1, extractMat);
+
+   extractPass.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);
+   extractPass.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
+   
+   return extractPass;
+} // makeExtractPass =========================================================== 
+   
   
 
 /**
@@ -285,13 +326,13 @@ import java.util.ArrayList;
       public void beforeRender()
       {  hBlurMat.setTexture("Texture", texture);
          hBlurMat.setFloat("Size", w);
-         hBlurMat.setFloat("Scale", 0.5f);
+         hBlurMat.setFloat("Scale", 0.666666f);
       }
    };
    hBlur.init(renderManager.getRenderer(), w, h, texFormat, Format.Depth, 1, 
     hBlurMat);
    hBlur.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);
-   hBlur.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
+//   hBlur.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
    postRenderPasses.add(hBlur);
 
 // Configure vertical blur pass.
@@ -303,13 +344,13 @@ import java.util.ArrayList;
       public void beforeRender()
       {  vBlurMat.setTexture("Texture", hBlur.getRenderedTexture());
          vBlurMat.setFloat("Size", h);
-         vBlurMat.setFloat("Scale", 0.5f);
+         vBlurMat.setFloat("Scale", 0.666666f);
       }
    };
    vBlur.init(renderManager.getRenderer(), w, h, texFormat, Format.Depth, 1,
     vBlurMat);
    vBlur.getRenderedTexture().setMagFilter(Texture.MagFilter.Bilinear);        
-   vBlur.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
+//   vBlur.getRenderedTexture().setMinFilter(Texture.MinFilter.Trilinear);
    postRenderPasses.add(vBlur);
 
    return vBlur.getRenderedTexture();

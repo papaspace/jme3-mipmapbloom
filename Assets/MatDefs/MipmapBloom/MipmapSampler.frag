@@ -11,13 +11,14 @@ varying vec2 texCoord;        // The texture coordinate of the center pixel.
 // =============================================================================
    void main()
 // =============================================================================
-{  gl_FragColor=0.2*texture2D(m_Texture, texCoord)
-    +0.11*(texture2D(m_Texture, texCoord+vec2(m_Dx,0.0))
-    +texture2D(m_Texture, texCoord+vec2(-m_Dx,0.0))
-    +texture2D(m_Texture, texCoord+vec2(0.0,m_Dy))
-    +texture2D(m_Texture, texCoord+vec2(0.0,-m_Dy))
-    +texture2D(m_Texture, texCoord+vec2(m_Dx,m_Dy))
-    +texture2D(m_Texture, texCoord+vec2(m_Dx,-m_Dy))
-    +texture2D(m_Texture, texCoord+vec2(-m_Dx,m_Dy))
-    +texture2D(m_Texture, texCoord+vec2(-m_Dx,-m_Dy)));
+{
+#ifdef MULTISAMPLE
+   gl_FragColor=0.25*(texture2D(m_Texture, texCoord+vec2(-m_Dx,-m_Dy))
+    +texture2D(m_Texture, texCoord+vec2( m_Dx,-m_Dy))
+    +texture2D(m_Texture, texCoord+vec2( m_Dx, m_Dy))
+    +texture2D(m_Texture, texCoord+vec2(-m_Dx, m_Dy)));
+#else
+   gl_FragColor=texture2D(m_Texture, texCoord);
+#endif
+
 } // main ======================================================================

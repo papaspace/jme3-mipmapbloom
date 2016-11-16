@@ -19,6 +19,7 @@ MaterialDef PreHdr {
         Defines {
             RESOLVE_MS : NumSamples
             RESOLVE_DEPTH_MS : NumSamplesDepth
+            MULTISAMPLE : Dx
         }
     }
 
